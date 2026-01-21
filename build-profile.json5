@@ -1,0 +1,59 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "material": {
+          "certpath": "C:/Users/86187/.ohos/config/openharmony/default_mnn_l0siRlKeClNQlfew2h6sYlpgNBn7XZWueNCM40OBnR4=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BFE74C2074A0A0C6EA4B4C2E1BE13FA36D04D0E01696302C681722553C45BF48326E279675503BF",
+          "profile": "C:/Users/86187/.ohos/config/openharmony/default_mnn_l0siRlKeClNQlfew2h6sYlpgNBn7XZWueNCM40OBnR4=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:/Users/86187/.ohos/config/openharmony/default_mnn_l0siRlKeClNQlfew2h6sYlpgNBn7XZWueNCM40OBnR4=.p12",
+          "storePassword": "0000001B1BD152F2D9E5F7383438842981DF5598AEBA4066822E9DC6B352D193C40485C8155FEF4053714B"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compileSdkVersion": 20,
+        //指定OpenHarmony应用编译时的版本，当前以API 20为例
+        "targetSdkVersion": 20,
+        //指定OpenHarmony应用运行所需的目标SDK版本，当前以API 20为例
+        "compatibleSdkVersion": 20,
+        //指定OpenHarmony应用兼容的最低版本，当前以API 20为例
+        "runtimeOS": "OpenHarmony",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}
