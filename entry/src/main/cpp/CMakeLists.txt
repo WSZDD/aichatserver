@@ -1,12 +1,44 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(LlamaWrapper)
 
-# 基础设置
+# ==============================================================================
+# 1. 基础设置
+# ==============================================================================
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 11)
 
+set(NATIVERENDER_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(LLAMA_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp)
+set(SHERPA_NCNN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sherpa-ncnn)
 
+# ==============================================================================
+# 2. Sherpa-ncnn 配置
+# ==============================================================================
+include(FetchContent)
+FetchContent_Declare(kissfft SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/kissfft")
+FetchContent_Declare(kaldi_native_fbank SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/kaldi-native-fbank")
+FetchContent_Declare(kaldifst SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/kaldifst")
+FetchContent_Declare(openfst SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/openfst")
+FetchContent_Declare(ncnn SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/ncnn")
+
+set(SHERPA_NCNN_ENABLE_PORTAUDIO OFF CACHE BOOL "" FORCE)
+set(SHERPA_NCNN_ENABLE_JNI OFF CACHE BOOL "" FORCE)
+set(SHERPA_NCNN_ENABLE_C_API ON CACHE BOOL "" FORCE)
+set(SHERPA_NCNN_ENABLE_BINARY OFF CACHE BOOL "" FORCE)
+set(SHERPA_NCNN_ENABLE_WEBSOCKET OFF CACHE BOOL "" FORCE)
+
+list(APPEND CMAKE_MODULE_PATH "${SHERPA_NCNN_DIR}/cmake")
+add_subdirectory(${SHERPA_NCNN_DIR})
+
+include_directories(${SHERPA_NCNN_DIR})
+include_directories(${SHERPA_NCNN_DIR}/sherpa-ncnn/c-api)
+target_include_directories(sherpa-ncnn-core PUBLIC ${SHERPA_NCNN_DIR})
+target_include_directories(sherpa-ncnn-c-api PUBLIC ${SHERPA_NCNN_DIR})
+
+# ==============================================================================
+# 3. LLM 核心配置 (您的代码)
+# ==============================================================================
 include_directories(
     ${LLAMA_ROOT}/include
     ${LLAMA_ROOT}/src
@@ -21,7 +53,6 @@ file(GLOB_RECURSE ALL_SRCS
     "${LLAMA_ROOT}/*.c"
 )
 
-# 过滤黑名单
 list(FILTER ALL_SRCS EXCLUDE REGEX ".*main\\.cpp$")
 list(FILTER ALL_SRCS EXCLUDE REGEX ".*/common/.*")
 list(FILTER ALL_SRCS EXCLUDE REGEX ".*tests/.*")
@@ -54,26 +85,36 @@ add_definitions("-DGGML_COMMIT=((char*)0)")
 add_definitions(-DGGML_USE_CPU)
 add_definitions(-D_FILE_OFFSET_BITS=64)
 add_definitions(-DGGML_SCHED_MAX_COPIES=4)
-add_definitions(-DNDEBUG) # 关闭断言 (重要)
+add_definitions(-DNDEBUG)
 
-# 开启 O3 最高级优化
+# 优化选项
 add_compile_options(-O3)
-
-# 循环展开优化
 add_compile_options(-funroll-loops)
 
-# 32位架构专属优化 (解决 sgemm.cpp 报错)
+# 🔥🔥🔥 核心修复区：32位架构配置 🔥🔥🔥
 if(${OHOS_ARCH} STREQUAL "armeabi-v7a")
-    # 必须使用 neon-fp16 才能识别 vld1q_f16 指令
+    # 您的原版配置
     add_definitions(-mfpu=neon-fp16)
-
-    # 指定浮点 ABI
     add_compile_options(-mfloat-abi=softfp)
-
-    # 显式指定架构 (可选，增加稳定性)
     add_compile_options(-march=armv7-a)
+
+    # 🟢 新增：尝试骗过 ggml-cpu-impl.h，让它不要重定义
+    # 这两个宏通常用来指示系统已经提供了 FP16 支持
+    add_definitions(-D__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+    add_definitions(-D__ARM_NEON_FP)
 endif()
 
-# 生成库
-add_library(mnnllm SHARED napi_init.cpp ${ALL_SRCS})
-target_link_libraries(mnnllm PUBLIC libace_napi.z.so libhilog_ndk.z.so)
+# ==============================================================================
+# 4. 生成库
+# ==============================================================================
+add_library(mnnllm SHARED
+    napi_init.cpp
+    sherpa_napi.cpp
+    ${ALL_SRCS}
+)
+
+target_link_libraries(mnnllm PUBLIC
+    libace_napi.z.so
+    libhilog_ndk.z.so
+    sherpa-ncnn-c-api
+)
