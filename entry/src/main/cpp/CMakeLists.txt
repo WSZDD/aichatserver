@@ -125,12 +125,15 @@ add_definitions(-DNDEBUG)
 add_library(mnnllm SHARED
     napi_init.cpp
     sherpa_napi.cpp
+    tts_manager.cpp  # <--- 🔥 新增：TTS 管理实现类
     ${ALL_SRCS}
 )
 
 target_link_libraries(mnnllm PUBLIC
     libace_napi.z.so
     libhilog_ndk.z.so
+    librawfile.z.so
     sherpa-ncnn-c-api
+    sherpa-ncnn-core # <--- 🔥 新增：显式链接 core 库以支持 C++ 接口 (OfflineTts)
     ncnn
 )
